@@ -1354,11 +1354,23 @@ export default function Home() {
         // Seek video accurately
         vid.currentTime = t;
         await new Promise<void>((resolve) => {
-          const onSeeked = () => { vid!.removeEventListener("seeked", onSeeked); resolve(); };
+          const onSeeked = () => { 
+            vid!.removeEventListener("seeked", onSeeked); 
+            // The 'seeked' event fires before the new frame's texture is fully uploaded to the GPU.
+            // Waiting two animation frames guarantees the canvas will draw the NEW frame, preventing severe lag/jitter.
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => resolve());
+            });
+          };
           vid!.addEventListener("seeked", onSeeked);
           // Fallback if seeked doesn't fire
           setTimeout(() => { vid!.removeEventListener("seeked", onSeeked); resolve(); }, 150);
         });
+
+        // Throttle to prevent overwhelming the WebCodecs encoder and dropping frames
+        while (videoEncoder.encodeQueueSize > 5) {
+          await new Promise(r => setTimeout(r, 10));
+        }
         
         // Draw video frame to canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
