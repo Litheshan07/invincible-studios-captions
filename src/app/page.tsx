@@ -1358,18 +1358,33 @@ export default function Home() {
       const startTime = performance.now();
       
       await new Promise<void>((resolveExport, rejectExport) => {
+        let isDone = false;
+        const finish = () => {
+          if (isDone) return;
+          isDone = true;
+          vid!.pause();
+          resolveExport();
+        };
+
+        vid!.addEventListener("ended", finish);
+
         const processFrame = async (now: number, metadata: any) => {
           try {
+            if (isDone) return;
             if (exportAbortRef.current) {
-              vid!.pause();
               return rejectExport(new Error("Export cancelled"));
             }
 
             // Dynamically throttle playback if the WebCodecs encoder queue gets backed up
-            if (videoEncoder.encodeQueueSize > 15 && !vid!.paused) {
+            // We must await INSIDE this function to prevent a deadlock (since RVFC won't fire while paused)
+            if (videoEncoder.encodeQueueSize > 15) {
               vid!.pause();
-            } else if (videoEncoder.encodeQueueSize <= 5 && vid!.paused && vid!.currentTime < totalDuration) {
-              vid!.play().catch(() => {});
+              while (videoEncoder.encodeQueueSize > 5) {
+                await new Promise(r => setTimeout(r, 50));
+              }
+              if (!exportAbortRef.current && vid!.currentTime < totalDuration) {
+                await vid!.play().catch(() => {});
+              }
             }
 
             // Only process NEW frames (requestVideoFrameCallback fires perfectly synchronized with source frames)
@@ -1440,8 +1455,7 @@ export default function Home() {
             }
 
             if (vid!.currentTime >= totalDuration || vid!.ended) {
-              vid!.pause();
-              resolveExport();
+              finish();
             } else {
               (vid as any).requestVideoFrameCallback(processFrame);
             }
