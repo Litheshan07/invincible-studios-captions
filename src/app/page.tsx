@@ -103,14 +103,16 @@ export default function Home() {
   // Saved Progress projects database
   const [savedProjects, setSavedProjects] = useState<any[]>([]);
   
-  // Dynamic API Host resolver for cross-device WiFi & mobile data tunneling
+  // Calls the Render backend DIRECTLY from the browser — skips Vercel serverless entirely
+  // Set NEXT_PUBLIC_RENDER_URL=https://your-app.onrender.com in Vercel env vars
   const getApiHost = () => {
     if (typeof window !== "undefined") {
-      return "";
+      return process.env.NEXT_PUBLIC_RENDER_URL || "";
     }
-    return "http://localhost:8000";
+    return process.env.NEXT_PUBLIC_RENDER_URL || "http://localhost:8000";
   };
   const apiHost = getApiHost();
+
   
   // App Global State
   const [videoFile, setVideoFile] = useState<File | null>(null);
