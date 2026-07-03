@@ -120,6 +120,9 @@ export default function Home() {
   const [wordsPerSegment, setWordsPerSegment] = useState<number>(2);
   const [trainingConsent, setTrainingConsent] = useState<boolean>(true);
   const [targetLang, setTargetLang] = useState<string>("tanglish");
+  // spokenLanguage = the actual audio language sent to ElevenLabs STT
+  // "ta" = Tamil, "en" = English, "auto" = auto-detect
+  const [spokenLanguage, setSpokenLanguage] = useState<string>("auto");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [processProgress, setProcessProgress] = useState<number>(0);
   const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9" | "1:1" | "4:5">("9:16");
@@ -233,14 +236,20 @@ export default function Home() {
   const audioMotionRef = useRef<any>(null);
   const pollIntervalRef = useRef<any>(null);
   const progressIntervalRef = useRef<any>(null);
+  // Export-specific refs (canvas MediaRecorder export)
+  const exportVideoRef = useRef<HTMLVideoElement | null>(null);
+  const exportAbortRef = useRef<boolean>(false);
 
   const abortExport = () => {
+    // Signal the client-side MediaRecorder loop to stop
+    exportAbortRef.current = true;
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     setIsExporting(false);
     setExportProgress(0);
     setExportTimeRemaining(null);
     setExportRenderFps(null);
+    setShowExportModal(false);
   };
 
   
@@ -939,7 +948,8 @@ export default function Home() {
     formData.append("video", videoFile);
     formData.append("words_per_segment", wordsPerSegment.toString());
     formData.append("consent_training", trainingConsent.toString());
-    formData.append("source_language", targetLang === "tamil" ? "ta" : "auto");
+    // Use the explicit spoken language the user selected (never derive from output format)
+    formData.append("source_language", spokenLanguage);
     formData.append("target_language", targetLang);
     formData.append("aspect_ratio", aspectRatio);
 
@@ -981,112 +991,242 @@ export default function Home() {
       }, 500);
 
     } catch (error) {
-
-      console.warn("[BACKEND FAIL - USING OFFLINE FALLBACK ENGINE]", error);
+      console.error("[Transcription Error]", error);
       clearInterval(progressInterval);
-      
-      const mockRawWords = [
-        { word: "வணக்கம்", start: 0.2, end: 0.7, speaker: "Speaker 1" },
-        { word: "நண்பா", start: 0.8, end: 1.2, speaker: "Speaker 1" },
-        { word: "இன்னைக்கு", start: 1.3, end: 1.6, speaker: "Speaker 1" },
-        { word: "நம்ம", start: 1.7, end: 2.0, speaker: "Speaker 1" },
-        { word: "ஒரு", start: 2.1, end: 2.3, speaker: "Speaker 1" },
-        { word: "செம்ம", start: 2.4, end: 2.8, speaker: "Speaker 1" },
-        { word: "வீடியோ", start: 2.9, end: 3.3, speaker: "Speaker 1" },
-        { word: "பார்க்கப்போறோம்", start: 3.4, end: 4.1, speaker: "Speaker 1" },
-        { word: "எப்படி", start: 4.5, end: 4.9, speaker: "Speaker 2" },
-        { word: "இருக்கீங்க", start: 5.0, end: 5.5, speaker: "Speaker 2" },
-        { word: "எல்லாரும்", start: 5.6, end: 6.0, speaker: "Speaker 2" },
-        { word: "சாப்டீங்களா", start: 6.1, end: 6.7, speaker: "Speaker 2" },
-        { word: "இன்னைக்கு", start: 7.2, end: 7.6, speaker: "Speaker 1" },
-        { word: "வீடியோ", start: 7.7, end: 8.1, speaker: "Speaker 1" },
-        { word: "டாபிக்", start: 8.2, end: 8.7, speaker: "Speaker 1" },
-        { word: "AI", start: 8.8, end: 9.1, speaker: "Speaker 1" },
-        { word: "கேப்ஷன்ஸ்", start: 9.2, end: 9.7, speaker: "Speaker 1" },
-        { word: "சூப்பர்", start: 9.8, end: 10.3, speaker: "Speaker 1" },
-        { word: "ஸ்பீடு", start: 10.4, end: 10.8, speaker: "Speaker 1" },
-        { word: "நன்றி", start: 10.9, end: 11.5, speaker: "Speaker 1" }
-      ];
-
-      const mockTranslit: Record<string, string> = {
-        "வணக்கம்": "vanakkam", "நண்பா": "nanba", "இன்னைக்கு": "innaiku", "நம்ம": "namma",
-        "ஒரு": "oru", "செம்ம": "semma", "வீடியோ": "video", "பார்க்கப்போறோம்": "parkapoorom",
-        "எப்படி": "epdi", "இருக்கீங்க": "irukeenga", "எல்லாரும்": "ellarum", "சாப்டீங்களா": "sapteengala",
-        "டாபிக்": "topic", "AI": "AI", "கேப்ஷன்ஸ்": "captions", "சூப்பர்": "super",
-        "ஸ்பீடு": "speed", "நன்றி": "nandri"
-      };
-
-      const mockEng: Record<string, string> = {
-        "வணக்கம்": "Hello", "நண்பா": "friend", "இன்னைக்கு": "today", "நம்ம": "we",
-        "ஒரு": "a", "செம்ம": "awesome", "வீடியோ": "video", "பார்க்கப்போறோம்": "are going to watch",
-        "எப்படி": "how", "இருக்கீங்க": "are you doing", "எல்லாரும்": "everyone", "சாப்டீங்களா": "did you eat",
-        "டாபிக்": "topic", "AI": "AI", "கேப்ஷன்ஸ்": "captions", "சூப்பர்": "super",
-        "ஸ்பீடு": "speed", "நன்றி": "thank you"
-      };
-
-      const formattedSegments: Segment[] = [];
-      let tempWords: Word[] = [];
-      
-      mockRawWords.forEach((wordData, i) => {
-        const wrd = wordData.word;
-        const isEmp = ["செம்ம", "சூப்பர்", "AI", "டாபிக்"].includes(wrd);
-        const isPunch = ["பார்க்கப்போறோம்", "சாப்டீங்களா", "நன்றி"].includes(wrd);
-
-        tempWords.push({
-          word: wrd,
-          start_time: wordData.start,
-          end_time: wordData.end,
-          confidence: 0.96,
-          is_emphasized: isEmp,
-          is_punchline: isPunch
-        });
-
-        const isLast = i === mockRawWords.length - 1;
-        const speakerChanged = !isLast && mockRawWords[i+1].speaker !== wordData.speaker;
-
-        if (tempWords.length === wordsPerSegment || isLast || speakerChanged) {
-          const start = tempWords[0].start_time;
-          const end = tempWords[tempWords.length - 1].end_time;
-          const speaker = wordData.speaker;
-          
-          const tText = tempWords.map(w => w.word).join(" ");
-          const tlText = tempWords.map(w => mockTranslit[w.word] || w.word).join(" ");
-          const egText = tempWords.map(w => mockEng[w.word] || w.word).join(" ");
-
-          formattedSegments.push({
-            id: Math.random().toString(36).substr(2, 9),
-            speaker_id: speaker,
-            start_time: start,
-            end_time: end,
-            text: tText,
-            tamil_text: tText,
-            tanglish_text: tlText,
-            english_text: egText,
-            words: [...tempWords]
-          });
-          tempWords = [];
-        }
-      });
-
-      const validated = validateAndSanitizeSegments(formattedSegments);
-      setProjectId(Math.random().toString(36).substr(2, 9));
-      setExpiresAt(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
-      setSegments(validated);
-      resetHistory(validated);
-      setDuration(12.0);
-
-
-      setProcessProgress(100);
-      setTimeout(() => {
-        setIsProcessing(false);
-        setView("editor");
-        applyPreset("mrbeast");
-      }, 500);
+      setIsProcessing(false);
+      setProcessProgress(0);
+      alert(
+        "Transcription Failed\n\n" +
+        "The audio could not be transcribed. Please check:\n" +
+        "• Your video has clear audio\n" +
+        "• The correct spoken language is selected\n" +
+        "• Your internet connection is stable\n\n" +
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   };
 
+  // ── Client-side Canvas+MediaRecorder Export ─────────────────────────────
+  // (exportVideoRef and exportAbortRef are declared in the refs block above)
+
   const runExport = async () => {
-    // ── Export Validation Step ──
+    if (!videoUrl || !videoFile) {
+      alert("No video loaded. Please upload a video first.");
+      return;
+    }
+    if (segments.length === 0) {
+      alert("No captions to export. Please process the video first.");
+      return;
+    }
+
+    setIsExporting(true);
+    setExportProgress(2);
+    exportAbortRef.current = false;
+
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+    try {
+      // ── Step 1: Prepare canvas & hidden video element ────────────────────
+      const totalDuration = duration || segments[segments.length - 1].end_time;
+      const targetFps = exportFps || 30;
+
+      const canvas = document.createElement("canvas");
+      const qualityMap: Record<string, { w: number; h: number }> = {
+        "720p": { w: 1280, h: 720 },
+        "1080p": { w: 1920, h: 1080 },
+        "4k": { w: 3840, h: 2160 },
+      };
+      const { w: outW, h: outH } = qualityMap[exportQuality] || { w: 1920, h: 1080 };
+
+      // For portrait (9:16) swap dimensions
+      const isPortrait = aspectRatio === "9:16";
+      canvas.width = isPortrait ? Math.min(outW, outH) : outW;
+      canvas.height = isPortrait ? Math.max(outW, outH) : outH;
+      const ctx = canvas.getContext("2d")!;
+
+      // Hidden video for frame source
+      const vid = document.createElement("video");
+      vid.src = videoUrl;
+      vid.muted = false;
+      vid.preload = "auto";
+      vid.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        vid.onloadedmetadata = () => resolve();
+        vid.onerror = reject;
+        setTimeout(reject, 10000);
+      });
+      exportVideoRef.current = vid;
+
+      // ── Step 2: Set up MediaRecorder ─────────────────────────────────────
+      const bitrateMap: Record<string, number> = { "1m": 1_000_000, "5m": 5_000_000, "15m": 15_000_000 };
+      const videoBitrate = bitrateMap[exportBitrate] || 5_000_000;
+
+      // Capture canvas stream + audio from the video element
+      const canvasStream = canvas.captureStream(targetFps);
+      let audioStream: MediaStream | null = null;
+      try {
+        // @ts-expect-error — captureStream is not in TS types but works in browsers
+        audioStream = vid.captureStream();
+      } catch {
+        console.warn("[Export] Audio capture not supported — exporting video only");
+      }
+
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...(audioStream ? audioStream.getAudioTracks() : []),
+      ]);
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
+
+      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType,
+        videoBitsPerSecond: videoBitrate,
+      });
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.start(100); // collect data every 100 ms
+
+      // ── Step 3: Seek-and-draw loop ────────────────────────────────────────
+      const frameDuration = 1 / targetFps;
+      let t = 0;
+      const totalFrames = Math.ceil(totalDuration * targetFps);
+      let frameIdx = 0;
+
+      vid.currentTime = 0;
+      await new Promise<void>(r => { vid.onseeked = () => r(); vid.currentTime = 0; });
+
+      const drawFrame = async () => {
+        if (exportAbortRef.current) {
+          recorder.stop();
+          return;
+        }
+
+        // Draw video frame
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+
+        // Find active segment
+        const activeSeg = segments.find(s => t >= s.start_time && t <= s.end_time);
+        if (activeSeg) {
+          const text = targetLang === "tanglish"
+            ? (activeSeg.tanglish_text || activeSeg.text)
+            : targetLang === "english"
+            ? (activeSeg.english_text || activeSeg.text)
+            : (activeSeg.tamil_text || activeSeg.text);
+
+          drawSubtitle(canvas, ctx, {
+            text,
+            words: activeSeg.words,
+            currentTime: t,
+            targetLang,
+            selectedFont,
+            selectedWeight,
+            fontSize,
+            fillType,
+            fillColor,
+            gradStart,
+            gradEnd,
+            strokeColor,
+            strokeWidth,
+            glowColor,
+            glowRadius,
+            glowOpacity,
+            shadowColor,
+            shadowBlur,
+            shadowOffsetX,
+            shadowOffsetY,
+            depth3d,
+            depthColor,
+            rotationX,
+            rotationY,
+            rotationZ,
+            subX,
+            subY,
+            positionTarget: "global",
+            exportDebug: false,
+          });
+        }
+
+        frameIdx++;
+        t = frameIdx * frameDuration;
+        const progress = Math.min(98, Math.round((frameIdx / totalFrames) * 95) + 2);
+        setExportProgress(progress);
+        setExportTimeRemaining(Math.round(((totalFrames - frameIdx) / targetFps)));
+
+        if (t <= totalDuration + frameDuration) {
+          // Seek video to next frame time
+          vid.currentTime = Math.min(t, vid.duration);
+          await new Promise<void>(r => {
+            const onSeeked = () => { vid.removeEventListener("seeked", onSeeked); r(); };
+            vid.addEventListener("seeked", onSeeked);
+          });
+          // Use setTimeout to yield to browser and avoid blocking UI
+          setTimeout(drawFrame, 0);
+        } else {
+          // Done — stop recorder
+          recorder.stop();
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `INVINCIBLE_STUDIOS_export.webm`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        setExportProgress(100);
+        setExportTimeRemaining(0);
+        setTimeout(() => {
+          setIsExporting(false);
+          setShowExportModal(false);
+          setExportTimeRemaining(null);
+          setExportRenderFps(null);
+          if (!exportAbortRef.current) {
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+          }
+          exportAbortRef.current = false;
+        }, 500);
+      };
+
+      // Start the frame loop
+      setTimeout(drawFrame, 0);
+
+    } catch (error) {
+      console.error("[Export Error]", error);
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      setIsExporting(false);
+      setExportProgress(0);
+      setExportTimeRemaining(null);
+      setExportRenderFps(null);
+      setShowExportModal(false);
+      alert(
+        "Export Failed\n\n" +
+        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        "Make sure your browser supports MediaRecorder (Chrome/Edge recommended)."
+      );
+    }
+  };
+
+  const cancelExport = () => {
+    exportAbortRef.current = true;
+    setIsExporting(false);
+    setExportProgress(0);
+    setExportTimeRemaining(null);
+    setExportRenderFps(null);
+    setShowExportModal(false);
+  };
+
+  // ── Legacy Export Validation Step (kept for reference, now unused) ──
+  const _legacyExportValidation = async () => {
     try {
       const canvas1 = document.createElement("canvas");
       const canvas2 = document.createElement("canvas");
@@ -2317,14 +2457,28 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 mb-2 block">Language & Transliteration</label>
+                  <label className="text-xs font-semibold text-slate-300 mb-2 block">🎙️ Spoken Language in Video</label>
+                  <select
+                    value={spokenLanguage}
+                    onChange={(e) => setSpokenLanguage(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500/50 mb-3"
+                  >
+                    <option value="auto">Auto Detect (Recommended)</option>
+                    <option value="ta">Tamil (தமிழ்)</option>
+                    <option value="en">English</option>
+                    <option value="hi">Hindi (हिन्दी)</option>
+                    <option value="te">Telugu (తెలుగు)</option>
+                    <option value="kn">Kannada (ಕನ್ನಡ)</option>
+                    <option value="ml">Malayalam (മലയാളം)</option>
+                  </select>
+                  <label className="text-xs font-semibold text-slate-300 mb-2 block">📝 Caption Output Format</label>
                   <select
                     value={targetLang}
                     onChange={(e) => setTargetLang(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500/50"
                   >
-                    <option value="tanglish">Tamil to Tanglish (Contextual Transliteration)</option>
-                    <option value="english">Tamil to English Translation</option>
+                    <option value="tanglish">Tamil → Tanglish (Contextual Transliteration)</option>
+                    <option value="english">Tamil → English Translation</option>
                     <option value="tamil">Formal Tamil (தமிழ்)</option>
                     <option value="multilingual">Multilingual Source Classification</option>
                   </select>
