@@ -241,6 +241,36 @@ def translate_to_english_free(text: str, source_lang: str = "ta") -> str:
         print(f"[TRANSLATE] Free Google Translate failed: {e}")
     return text  # fallback: return original text if translation fails
 
+def translate_text_free(text: str, source_lang: str, target_lang: str) -> str:
+    """
+    Translate text using Google Translate free (unofficial) endpoint.
+    """
+    if not text.strip() or source_lang == target_lang:
+        return text
+    try:
+        import requests as _req
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {
+            "client": "gtx",
+            "sl": source_lang,
+            "tl": target_lang,
+            "dt": "t",
+            "q": text
+        }
+        resp = _req.get(url, params=params, timeout=8)
+        if resp.status_code == 200:
+            data = resp.json()
+            translated_parts = []
+            for chunk in data[0]:
+                if chunk and chunk[0]:
+                    translated_parts.append(chunk[0])
+            result = " ".join(translated_parts).strip()
+            if result:
+                return result
+    except Exception as e:
+        print(f"[TRANSLATE] Free Google Translate failed ({source_lang}->{target_lang}): {e}")
+    return text
+
 # Background task to clean up uploaded projects after 24 hours
 def schedule_project_cleanup():
     now = datetime.utcnow()
@@ -720,7 +750,7 @@ async def process_media(
                 try:
                     import requests
                     url = "https://api.elevenlabs.io/v1/speech-to-text"
-                    api_key = "sk_0c26c9ab908ad30bb8446ac621dcc38964974e63c4b3bd78"
+                    api_key = os.getenv("ELEVENLABS_API_KEY") or "sk_0c26c9ab908ad30bb8446ac621dcc38964974e63c4b3bd78"
 
                     # Map source_language to BCP-47 language code for ElevenLabs
                     lang_map = {
@@ -871,13 +901,6 @@ async def process_media(
                 seg_text = " ".join([w.word for w in temp_words])
                 
                 # Dynamic translation / transliteration
-                original_text = seg_text
-                tamil_text = seg_text  # raw transcribed text (could be Tamil or any language)
-
-                # Tanglish: try to phonetically map Tamil words; keep others as-is
-                tanglish_text = transliterate_tamil(seg_text)
-
-                # English translation: call Google Translate for non-English source audio
                 source_lang_code = {
                     "tamil": "ta", "ta": "ta",
                     "hindi": "hi", "hi": "hi",
@@ -889,11 +912,21 @@ async def process_media(
                     "gujarati": "gu", "gu": "gu",
                     "punjabi": "pa", "pa": "pa",
                     "urdu": "ur", "ur": "ur",
-                }.get(source_language.lower(), None)
+                }.get(source_language.lower(), "en")
 
-                english_text = seg_text  # default: same as original
-                if source_lang_code and source_lang_code != "en" and seg_text.strip():
-                    english_text = translate_to_english_free(seg_text, source_lang_code)
+                # Detect if the segment text actually contains Tamil characters
+                has_tamil_chars = any('\u0B80' <= c <= '\u0BFF' for c in seg_text)
+                
+                if has_tamil_chars:
+                    tamil_text = seg_text
+                    english_text = translate_text_free(seg_text, "ta", "en")
+                else:
+                    english_text = seg_text
+                    # Translate to Tamil dynamically if the source text is English/non-Tamil
+                    tamil_text = translate_text_free(seg_text, "en", "ta")
+
+                # Tanglish is the phonetic transliteration of the Tamil text
+                tanglish_text = transliterate_tamil(tamil_text)
 
                 segments.append(SegmentModel(
                     id=seg_id,
