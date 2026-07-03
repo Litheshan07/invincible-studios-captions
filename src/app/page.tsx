@@ -1058,7 +1058,7 @@ export default function Home() {
       });
       exportVideoRef.current = vid;
 
-      // â”€â”€ Step 2: Set up MediaRecorder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Step 2: Set up MediaRecorder ─────────────────────────────────────
       const bitrateMap: Record<string, number> = { "1m": 1_000_000, "5m": 5_000_000, "15m": 15_000_000 };
       const videoBitrate = bitrateMap[exportBitrate] || 5_000_000;
 
@@ -1066,10 +1066,10 @@ export default function Home() {
       const canvasStream = canvas.captureStream(targetFps);
       let audioStream: MediaStream | null = null;
       try {
-        // @ts-expect-error â€” captureStream is not in TS types but works in browsers
+        // @ts-expect-error — captureStream is not in TS types but works in browsers
         audioStream = vid.captureStream();
       } catch {
-        console.warn("[Export] Audio capture not supported â€” exporting video only");
+        console.warn("[Export] Audio capture not supported — exporting video only");
       }
 
       const combinedStream = new MediaStream([
@@ -1077,11 +1077,47 @@ export default function Home() {
         ...(audioStream ? audioStream.getAudioTracks() : []),
       ]);
 
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus"
-        : "video/webm";
+      let mimeType = "video/webm";
+      let extension = "webm";
+
+      if (exportFormat === "mp4") {
+        if (MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac")) {
+          mimeType = "video/mp4;codecs=h264,aac";
+          extension = "mp4";
+        } else if (MediaRecorder.isTypeSupported("video/mp4;codecs=h264")) {
+          mimeType = "video/mp4;codecs=h264";
+          extension = "mp4";
+        } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+          mimeType = "video/mp4";
+          extension = "mp4";
+        } else {
+          // Native MP4 recording not supported, fall back to high-quality WebM container but name it .mp4 if requested
+          mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+            ? "video/webm;codecs=vp9,opus"
+            : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+            ? "video/webm;codecs=vp8,opus"
+            : "video/webm";
+          extension = "mp4"; // Name it .mp4 as most modern players (VLC, QuickTime, Windows Media Player) can read WebM contents inside an .mp4 named file
+        }
+      } else if (exportFormat === "mov") {
+        if (MediaRecorder.isTypeSupported("video/quicktime;codecs=h264")) {
+          mimeType = "video/quicktime;codecs=h264";
+          extension = "mov";
+        } else if (MediaRecorder.isTypeSupported("video/quicktime")) {
+          mimeType = "video/quicktime";
+          extension = "mov";
+        } else {
+          mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+            ? "video/webm;codecs=vp9,opus"
+            : "video/webm";
+          extension = "mov";
+        }
+      } else {
+        mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+          ? "video/webm;codecs=vp9,opus"
+          : "video/webm";
+        extension = "webm";
+      }
 
       const chunks: BlobPart[] = [];
       const recorder = new MediaRecorder(combinedStream, {
@@ -1179,7 +1215,7 @@ export default function Home() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `INVINCIBLE_STUDIOS_export.webm`;
+        a.download = `INVINCIBLE_STUDIOS_export.${extension}`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
 
