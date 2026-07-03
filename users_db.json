@@ -1,0 +1,29 @@
+{
+    "test@test.com": {
+        "email": "test@test.com",
+        "phone": "123",
+        "first_name": "test",
+        "second_name": null,
+        "dob": "2000-01-01",
+        "gender": "male",
+        "password_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+    },
+    "invincible.universe07@gmail.com": {
+        "email": "invincible.universe07@gmail.com",
+        "phone": "+918667530386",
+        "first_name": "Litheshan K",
+        "second_name": null,
+        "dob": "2007-09-02",
+        "gender": "male",
+        "password_hash": "8bb0fd4f8262f0add06b6126319193155db53221810f03fde9f6d9876cad597c"
+    },
+    "er.litheshan@gmail.com": {
+        "email": "er.litheshan@gmail.com",
+        "phone": "+918608613550",
+        "first_name": "Litheshan",
+        "second_name": "K",
+        "dob": "2007-09-02",
+        "gender": "male",
+        "password_hash": "489f719cadf919094ddb38e7654de153ac33c02febb5de91e5345cbe372cf4a0"
+    }
+}

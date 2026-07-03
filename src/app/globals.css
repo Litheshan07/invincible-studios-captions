@@ -1,0 +1,372 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Mukta+Malar:wght@200;300;400;500;600;700;800&family=Noto+Sans+Tamil:wght@100..900&family=Noto+Serif+Tamil:wght@100..900&family=Poppins:ital,wght@0,100..900;1,100..900&family=Saira:ital,wght@0,100..900;1,100..900&family=Space+Grotesk:wght@300..700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #020205;
+  --foreground: #f8fafc;
+  --primary-glow: radial-gradient(circle, rgba(244, 63, 94, 0.15) 0%, rgba(124, 58, 237, 0.05) 50%, transparent 100%);
+  --secondary-glow: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.05) 50%, transparent 100%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-image: 
+    radial-gradient(at 10% 20%, rgba(244, 63, 94, 0.05) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(139, 92, 246, 0.05) 0px, transparent 50%);
+}
+
+/* Custom scrollbars for timeline and UI panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Liquid Glass Glassmorphism Styles */
+.liquid-glass {
+  background: rgba(13, 13, 23, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 4px 30px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.liquid-glass-premium {
+  background: rgba(20, 20, 35, 0.7);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0px rgba(255, 255, 255, 0.15),
+    inset 0 -1px 20px rgba(255, 255, 255, 0.02);
+}
+
+/* Liquid fluid background animation (Apple style) */
+@keyframes fluid-blob {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1) rotate(120deg);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9) rotate(240deg);
+  }
+}
+
+.animate-blob-1 {
+  animation: fluid-blob 15s infinite alternate ease-in-out;
+}
+.animate-blob-2 {
+  animation: fluid-blob 20s infinite alternate-reverse ease-in-out;
+}
+.animate-blob-3 {
+  animation: fluid-blob 25s infinite alternate ease-in-out;
+}
+
+/* Karaoke scale-pop effect */
+@keyframes karaoke-pop {
+  0% {
+    transform: scale(0.9) rotate(-1deg);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.karaoke-active {
+  animation: karaoke-pop 0.25s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Elastic transitions matching Apple OS */
+.apple-transition {
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Metallic gradient border effect */
+.metallic-border {
+  position: relative;
+  border-radius: inherit;
+}
+.metallic-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.15));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Custom Liquid Glass Text Effect style */
+.font-liquid-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 100%);
+  -webkit-background-clip: text;
+  color: transparent !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* 3D Extruded Text Depth Effect on Titles & Headers */
+h1, h2, h3, h4 {
+  text-shadow: 
+    0 1px 0 #181630, 
+    0 2px 0 #121024, 
+    0 3px 0 #0c0a1a, 
+    0 4px 6px rgba(0, 0, 0, 0.7);
+}
+
+.title-3d-depth {
+  text-shadow: 
+    0 1px 0 #1b1935, 
+    0 2px 0 #16142a, 
+    0 3px 0 #110f20, 
+    0 4px 0 #0c0a18, 
+    0 5px 8px rgba(0, 0, 0, 0.8);
+  transform: perspective(400px) rotateX(4deg);
+}
+
+.text-3d-glow {
+  text-shadow: 
+    0 1px 0 #1b1935,
+    0 2px 0 #16142a,
+    0 0 10px rgba(251, 113, 133, 0.4),
+    0 0 20px rgba(139, 92, 246, 0.2);
+}
+
+/* Liquid Glass Sliders Custom Styling (Apple Refraction Style) */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, #22c55e 0%, #22c55e var(--value-percent, 0%), rgba(255, 255, 255, 0.08) var(--value-percent, 0%), rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  height: 8px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  outline: none;
+  box-shadow: 
+    inset 0 1px 3px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: background 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 6px;
+  border-radius: 9999px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 22px;
+  border-radius: 4px;
+  margin-top: -7px; /* Center pointer vertically on the track */
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.45) 30%, rgba(255, 255, 255, 0.08) 65%, rgba(255, 255, 255, 0.4) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 3px 8px rgba(0, 0, 0, 0.5), 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), 
+    inset 0 -1.5px 1.5px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+input[type="range"]:active::-webkit-slider-thumb,
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.6) 35%, rgba(255, 255, 255, 0.2) 70%, rgba(255, 255, 255, 0.55) 100%);
+  border-color: #ffffff;
+  box-shadow: 
+    0 4px 12px rgba(255, 255, 255, 0.35), 
+    inset 0 1.5px 3px rgba(255, 255, 255, 1), 
+    inset 0 -1.5px 3px rgba(0, 0, 0, 0.45);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 22px;
+  border-radius: 4px;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.45) 30%, rgba(255, 255, 255, 0.08) 65%, rgba(255, 255, 255, 0.4) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 3px 8px rgba(0, 0, 0, 0.5), 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), 
+    inset 0 -1.5px 1.5px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+input[type="range"]:active::-moz-range-thumb,
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.15);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.6) 35%, rgba(255, 255, 255, 0.2) 70%, rgba(255, 255, 255, 0.55) 100%);
+  border-color: #ffffff;
+  box-shadow: 
+    0 4px 12px rgba(255, 255, 255, 0.35), 
+    inset 0 1.5px 3px rgba(255, 255, 255, 1), 
+    inset 0 -1.5px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* Glassy tool segment cursor hover effect */
+.glassy-tool-segment {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.glassy-tool-segment:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 12px 30px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    0 0 15px rgba(255, 255, 255, 0.08);
+}
+
+.glassy-tool-segment::before {
+  content: "";
+  position: absolute;
+  top: -150%;
+  left: -150%;
+  width: 300%;
+  height: 300%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 65%);
+  transition: transform 0.5s ease-out;
+  pointer-events: none;
+}
+
+.glassy-tool-segment:hover::before {
+  transform: translate(50%, 50%);
+}
+
+/* Premium universal 3D text effect for all body text words */
+button, span, p, label, select, input, textarea {
+  text-shadow: 0.5px 0.5px 1.5px rgba(0, 0, 0, 0.6);
+}
+
+/* ===== Liquid Glass Panel Scrollbars ===== */
+.panel-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 9999px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.30) 0%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.20) 100%
+  );
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.20);
+}
+
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.50) 0%,
+    rgba(255, 255, 255, 0.20) 50%,
+    rgba(255, 255, 255, 0.38) 100%
+  );
+}
+
+.panel-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ===== Timeline horizontal scroll liquid-glass range ===== */
+.timeline-hscroll {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.timeline-hscroll::-webkit-slider-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #22c55e var(--value-percent, 0%),
+    rgba(255, 255, 255, 0.06) var(--value-percent, 0%)
+  );
+}
+
+.timeline-hscroll::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  margin-top: -7px;
+  background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0.08) 65%, rgba(255,255,255,0.40) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.80);
+  box-shadow:
+    0 3px 8px rgba(0,0,0,0.55),
+    inset 0 1.5px 1.5px rgba(255,255,255,0.95),
+    inset 0 -1.5px 1.5px rgba(0,0,0,0.35);
+  cursor: ew-resize;
+  transition: box-shadow 0.15s ease;
+}
+
+.timeline-hscroll::-webkit-slider-thumb:hover {
+  box-shadow:
+    0 4px 14px rgba(34,197,94,0.45),
+    0 3px 8px rgba(0,0,0,0.55),
+    inset 0 1.5px 1.5px rgba(255,255,255,0.95),
+    inset 0 -1.5px 1.5px rgba(0,0,0,0.35);
+}
+
