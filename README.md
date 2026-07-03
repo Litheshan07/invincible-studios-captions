@@ -1,5 +1,7 @@
 # Studio Ultimate 🎬
 
+🌐 **Live Demo:** [https://invincible-studios-captions.vercel.app/](https://invincible-studios-captions.vercel.app/)
+
 **Studio Ultimate** is a next-generation, AI-powered video captioning and editing web application. It automates video transcription, aligns subtitles, applies premium custom typography styles (including strokes, glows, 3D rotations, and gradient fills), and burns them directly into exported videos.
 
 ![Studio Ultimate UI](public/studio_ultimate_mockup.png)
@@ -77,4 +79,4 @@ npm install
 # Start the frontend in development mode
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to access **Studio Ultimate**.
+Open [http://localhost:3000](http://localhost:3000) to access the local development environment, or visit the live deployment at [https://invincible-studios-captions.vercel.app/](https://invincible-studios-captions.vercel.app/).
