@@ -13,28 +13,75 @@ import { useUndoHistory } from "./hooks/useUndoHistory";
 import { drawSubtitle } from "./utils/subtitleRenderer";
 
 
-// Phonetic Tanglish mapping dictionary for mock translation agent
-const TANGlish_MAP: Record<string, string> = {
-  "à®µà®£à®•à¯à®•à®®à¯": "vanakkam",
-  "à®Žà®ªà¯à®ªà®Ÿà®¿ à®‡à®°à¯à®•à¯à®•à¯€à®™à¯à®•": "epdi irukeenga",
-  "à®¨à®©à¯à®±à®¿": "nandri",
-  "à®šà®¾à®ªà¯à®Ÿà¯€à®™à¯à®•à®³à®¾": "sapteengala",
-  "à®šà¯‚à®ªà¯à®ªà®°à¯": "super",
-  "à®¨à®£à¯à®ªà®¾": "nanba",
-  "à®‡à®²à¯à®²à¯ˆ": "illa",
-  "à®†à®®à®¾à®®à¯": "ama",
-  "à®Žà®©à¯à®© à®ªà®£à¯à®±à¯€à®™à¯à®•": "enna panreenga",
-  "à®šà¯†à®®à¯à®®": "semma",
-  "à®‡à®©à¯à®©à¯ˆà®•à¯à®•à¯": "innaiku",
-  "à®¨à®®à¯à®®": "namma",
-  "à®’à®°à¯": "oru",
-  "à®µà¯€à®Ÿà®¿à®¯à¯‹": "video",
-  "à®ªà®¾à®°à¯à®•à¯à®•à®ªà¯à®ªà¯‹à®±à¯‹à®®à¯": "parkapoorom",
-  "à®Žà®²à¯à®²à®¾à®°à¯à®®à¯": "ellarum",
-  "à®Ÿà®¾à®ªà®¿à®•à¯": "topic",
-  "AI": "AI",
-  "à®•à¯‡à®ªà¯à®·à®©à¯à®¸à¯": "captions",
-  "à®¸à¯à®ªà¯€à®Ÿà¯": "speed"
+// ─────────────────────────────────────────────
+// Tamil → Tanglish phonetic dictionary & transliteration helpers
+// ─────────────────────────────────────────────
+const TANGLISH_MAP: Record<string, string> = {
+  "வணக்கம்": "vanakkam", "நன்றி": "nandri", "சாப்டீங்களா": "sapteengala",
+  "சூப்பர்": "super", "நண்பா": "nanba", "இல்லை": "illa", "ஆமாம்": "ama",
+  "செம்ம": "semma", "வீடியோ": "video", "பார்க்கப்போறோம்": "parkapoorom",
+  "இன்னைக்கு": "innaiku", "நம்ம": "namma", "ஒரு": "oru", "எல்லாரும்": "ellarum",
+  "டாபிக்": "topic", "கேப்ஷன்ஸ்": "captions", "ஆமா": "aama", "இல்ல": "illa",
+  "என்ன": "enna", "பண்றீங்க": "panreenga", "எப்படி": "epdi",
+  "இருக்கீங்க": "irukeenga", "இருக்கேன்": "irukken", "சரி": "sari",
+  "வா": "vaa", "போ": "po", "பார்": "paar", "சொல்லு": "sollu",
+  "கேளு": "kaelu", "தெரியும்": "theriyum", "தெரியாது": "theriyaathu",
+  "மக்கள்": "makkal", "நாடு": "naadu", "ஊர்": "ur",
+  "வீடு": "veedu", "அம்மா": "amma", "அப்பா": "appa",
+};
+
+function transliterateTamil(text: string): string {
+  return text.split(" ").map(w => {
+    const match = w.match(/^([\w\u0B80-\u0BFF]+)([.,!?"']*)$/);
+    if (match) {
+      const core = match[1];
+      const punct = match[2];
+      return (TANGLISH_MAP[core] ?? core) + punct;
+    }
+    return w;
+  }).join(" ");
+}
+
+async function translateText(text: string, sourceLang: string, targetLang: string): Promise<string> {
+  if (!text.trim() || sourceLang === targetLang) return text;
+  try {
+    const params = new URLSearchParams({
+      client: "gtx",
+      sl: sourceLang,
+      tl: targetLang,
+      dt: "t",
+      q: text,
+    });
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?${params}`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const parts: string[] = [];
+      for (const chunk of data[0]) {
+        if (chunk && chunk[0]) parts.push(chunk[0]);
+      }
+      const result = parts.join(" ").trim();
+      if (result) return result;
+    }
+  } catch {
+    // fallback to original
+  }
+  return text;
+}
+
+const LANG_MAP: Record<string, string> = {
+  tamil: "ta", ta: "ta",
+  hindi: "hi", hi: "hi",
+  telugu: "te", te: "te",
+  kannada: "kn", kn: "kn",
+  malayalam: "ml", ml: "ml",
+  bengali: "bn", bn: "bn",
+  marathi: "mr", mr: "mr",
+  gujarati: "gu", gu: "gu",
+  punjabi: "pa", pa: "pa",
+  urdu: "ur", ur: "ur",
+  english: "en", en: "en",
 };
 
 // Interfaces
@@ -953,38 +1000,174 @@ export default function Home() {
     formData.append("target_language", targetLang);
     formData.append("aspect_ratio", aspectRatio);
 
+    let segmentsData: Segment[] = [];
+    let projId = "";
+    let projTitle = videoFile.name;
+    let projDuration = 10.0;
+    let projExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    let dewarpX = 1.0;
+    let dewarpY = 1.0;
+
     try {
-      const response = await fetch(`${apiHost}/api/v1/projects/process`, {
-        method: "POST",
-        body: formData
-      });
+      let isUploaded = false;
+      try {
+        console.log(`[Upload] Attempting server processing via ${apiHost}...`);
+        const response = await fetch(`${apiHost}/api/v1/projects/process`, {
+          method: "POST",
+          body: formData
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const projResponse = await fetch(`${apiHost}/api/v1/projects/${data.project_id}`);
+          if (projResponse.ok) {
+            const projData = await projResponse.json();
+            projId = projData.id;
+            projTitle = projData.title;
+            projDuration = projData.duration;
+            projExpiresAt = projData.expires_at;
+            segmentsData = projData.segments || [];
+            dewarpX = projData.dewarp_scale_x || 1.0;
+            dewarpY = projData.dewarp_scale_y || 1.0;
+            isUploaded = true;
+          }
+        }
+      } catch (uploadErr) {
+        console.warn("[Upload] Server endpoint failed or timed out. Falling back to direct browser-side transcription...", uploadErr);
+      }
+
+      if (!isUploaded) {
+        // ── Direct Browser-side ElevenLabs Speech-to-Text Fallback ────────────
+        console.log("[ElevenLabs] Uploading video directly from browser to ElevenLabs API...");
+        const elevenLabsKey = "sk_d02e591bd0b9eb10e5d0bdc4f05803e11de5fb85904f673c";
+        const elLang = LANG_MAP[spokenLanguage.toLowerCase()] ?? null;
+
+        const sttForm = new FormData();
+        sttForm.append("file", videoFile);
+        sttForm.append("model_id", "scribe_v2");
+        if (elLang) sttForm.append("language_code", elLang);
+
+        const sttRes = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+          method: "POST",
+          headers: { "xi-api-key": elevenLabsKey },
+          body: sttForm,
+        });
+
+        if (!sttRes.ok) {
+          const errText = await sttRes.text();
+          throw new Error(`ElevenLabs API failed with status ${sttRes.status}: ${errText}`);
+        }
+
+        const sttData = await sttRes.json();
+        const recognizedText = sttData.text || "";
+        const elWords = (sttData.words || []).filter(
+          (w: any) => w.type === "word" && w.text?.trim()
+        );
+
+        console.log(`[ElevenLabs] Success! Browser transcribed ${elWords.length} words.`);
+
+        let wordsList: Word[] = [];
+        if (elWords.length > 0) {
+          const lastWord = elWords[elWords.length - 1];
+          projDuration = Math.max(projDuration, lastWord.end ?? projDuration);
+
+          for (const w of elWords) {
+            const wordText = (w.text || "").trim();
+            const start = parseFloat(w.start ?? 0);
+            const end = parseFloat(w.end ?? 0);
+            wordsList.push({
+              word: wordText,
+              start_time: Math.round(start * 100) / 100,
+              end_time: Math.round(end * 100) / 100,
+              confidence: 0.98,
+              is_emphasized: wordText.length > 5,
+              is_punchline: wordText.endsWith("!") || wordText.endsWith("?"),
+            });
+          }
+        } else if (recognizedText.trim()) {
+          const rawWords = recognizedText.trim().split(/\s+/);
+          const wordSpan = projDuration / rawWords.length;
+          rawWords.forEach((word: string, idx: number) => {
+            const start = idx * wordSpan;
+            wordsList.push({
+              word,
+              start_time: Math.round(start * 100) / 100,
+              end_time: Math.round((start + wordSpan) * 100) / 100,
+              confidence: 0.9,
+              is_emphasized: false,
+              is_punchline: false,
+            });
+          });
+        }
+
+        if (wordsList.length === 0) {
+          throw new Error("No speech or audio words were detected in your video file.");
+        }
+
+        // ── Group segments and translate/transliterate ───────────────────────
+        const sourceLangCode = LANG_MAP[spokenLanguage.toLowerCase()] ?? "en";
+        let tempWords: Word[] = [];
+
+        for (let i = 0; i < wordsList.length; i++) {
+          tempWords.push(wordsList[i]);
+
+          if (tempWords.length === wordsPerSegment || i === wordsList.length - 1) {
+            const segId = Math.random().toString(36).substring(2, 9);
+            const segStart = tempWords[0].start_time;
+            const segEnd = tempWords[tempWords.length - 1].end_time;
+            const segText = tempWords.map(w => w.word).join(" ");
+
+            const hasTamilChars = /[\u0B80-\u0BFF]/.test(segText);
+            let tamilText = "";
+            let englishText = "";
+
+            if (hasTamilChars) {
+              tamilText = segText;
+              englishText = await translateText(segText, "ta", "en");
+            } else {
+              englishText = segText;
+              tamilText = sourceLangCode === "ta"
+                ? segText
+                : await translateText(segText, sourceLangCode === "en" ? "en" : sourceLangCode, "ta");
+            }
+
+            const tanglishText = transliterateTamil(tamilText);
+            const displayText =
+              targetLang === "tanglish" ? tanglishText :
+              targetLang === "english" ? englishText :
+              tamilText;
+
+            segmentsData.push({
+              id: segId,
+              speaker_id: "Speaker 1",
+              start_time: Math.round(segStart * 100) / 100,
+              end_time: Math.round(segEnd * 100) / 100,
+              text: displayText,
+              tamil_text: tamilText,
+              tanglish_text: tanglishText,
+              english_text: englishText,
+              words: [...tempWords],
+            });
+
+            tempWords = [];
+          }
+        }
+        projId = Math.random().toString(36).substring(2, 9);
+      }
 
       clearInterval(progressInterval);
-
-      if (!response.ok) {
-        throw new Error("Backend processing failed");
-      }
-
-      const data = await response.json();
       setProcessProgress(100);
 
-      const projResponse = await fetch(`${apiHost}/api/v1/projects/${data.project_id}`);
-      if (!projResponse.ok) {
-        throw new Error("Failed to load project metadata");
-      }
-      
-      const projData = await projResponse.json();
-      const validated = validateAndSanitizeSegments(projData.segments);
-      
+      const validated = validateAndSanitizeSegments(segmentsData);
       setTimeout(() => {
-        setProjectId(projData.id);
-        setProjectTitle(projData.title);
-        setDuration(projData.duration);
-        setExpiresAt(projData.expires_at);
+        setProjectId(projId);
+        setProjectTitle(projTitle);
+        setDuration(projDuration);
+        setExpiresAt(projExpiresAt);
         setSegments(validated);
         resetHistory(validated);
-        setDewarpScaleX(projData.dewarp_scale_x || 1.0);
-        setDewarpScaleY(projData.dewarp_scale_y || 1.0);
+        setDewarpScaleX(dewarpX);
+        setDewarpScaleY(dewarpY);
         setIsProcessing(false);
         setView("editor");
         applyPreset("mrbeast");
