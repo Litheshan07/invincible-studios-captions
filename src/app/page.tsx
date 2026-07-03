@@ -290,6 +290,12 @@ export default function Home() {
   const abortExport = () => {
     // Signal the client-side MediaRecorder loop to stop
     exportAbortRef.current = true;
+    
+    // Clean up DOM video element if aborted
+    if (exportVideoRef.current && exportVideoRef.current.parentNode) {
+      exportVideoRef.current.parentNode.removeChild(exportVideoRef.current);
+    }
+    
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     setIsExporting(false);
@@ -1209,6 +1215,8 @@ export default function Home() {
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
+    let vid: HTMLVideoElement | null = null;
+
     try {
       // â”€â”€ Step 1: Prepare canvas & hidden video element â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const totalDuration = duration || segments[segments.length - 1].end_time;
@@ -1228,15 +1236,29 @@ export default function Home() {
       canvas.height = isPortrait ? Math.max(outW, outH) : outH;
       const ctx = canvas.getContext("2d")!;
 
-      // Hidden video for frame source
-      const vid = document.createElement("video");
+      // Hidden video for frame source — must be appended to the body and styled as visible
+      // to prevent the browser from throttling its decoding priority (which causes laggy canvas frames)
+      vid = document.createElement("video");
       vid.src = videoUrl;
       vid.muted = false;
       vid.preload = "auto";
       vid.crossOrigin = "anonymous";
+      vid.style.position = "fixed";
+      vid.style.bottom = "15px";
+      vid.style.right = "15px";
+      vid.style.width = "280px";
+      vid.style.height = "160px";
+      vid.style.zIndex = "999999";
+      vid.style.border = "3px solid #f43f5e";
+      vid.style.borderRadius = "12px";
+      vid.style.background = "#000";
+      vid.style.boxShadow = "0 8px 30px rgba(0, 0, 0, 0.7)";
+      vid.style.pointerEvents = "none";
+      document.body.appendChild(vid);
+
       await new Promise<void>((resolve, reject) => {
-        vid.onloadedmetadata = () => resolve();
-        vid.onerror = reject;
+        vid!.onloadedmetadata = () => resolve();
+        vid!.onerror = reject;
         setTimeout(reject, 10000);
       });
       exportVideoRef.current = vid;
@@ -1250,7 +1272,7 @@ export default function Home() {
       let audioStream: MediaStream | null = null;
       try {
         // @ts-expect-error — captureStream is not in TS types but works in browsers
-        audioStream = vid.captureStream();
+        audioStream = vid!.captureStream();
       } catch {
         console.warn("[Export] Audio capture not supported — exporting video only");
       }
@@ -1274,13 +1296,13 @@ export default function Home() {
           mimeType = "video/mp4";
           extension = "mp4";
         } else {
-          // Native MP4 recording not supported, fall back to high-quality WebM container but name it .mp4 if requested
+          // Native MP4 recording not supported, fall back to high-quality WebM container
           mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
             ? "video/webm;codecs=vp9,opus"
             : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
             ? "video/webm;codecs=vp8,opus"
             : "video/webm";
-          extension = "mp4"; // Name it .mp4 as most modern players (VLC, QuickTime, Windows Media Player) can read WebM contents inside an .mp4 named file
+          extension = "webm"; 
         }
       } else if (exportFormat === "mov") {
         if (MediaRecorder.isTypeSupported("video/quicktime;codecs=h264")) {
@@ -1293,7 +1315,7 @@ export default function Home() {
           mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
             ? "video/webm;codecs=vp9,opus"
             : "video/webm";
-          extension = "mov";
+          extension = "webm";
         }
       } else {
         mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
@@ -1312,23 +1334,23 @@ export default function Home() {
       recorder.start(100); // collect data every 100 ms
 
       // ── Step 3: Real-time Playback and Draw Loop ─────────────────────────
-      vid.currentTime = 0;
-      await vid.play();
+      vid!.currentTime = 0;
+      await vid!.play();
 
       const drawFrame = () => {
-        if (exportAbortRef.current || vid.ended || vid.currentTime >= totalDuration) {
-          vid.pause();
+        if (exportAbortRef.current || vid!.ended || vid!.currentTime >= totalDuration) {
+          vid!.pause();
           if (recorder.state !== "inactive") {
             recorder.stop();
           }
           return;
         }
 
-        const t = vid.currentTime;
+        const t = vid!.currentTime;
 
         // Draw video frame to canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(vid!, 0, 0, canvas.width, canvas.height);
 
         // Find active segment
         const activeSeg = segments.find(s => t >= s.start_time && t <= s.end_time);
@@ -1383,6 +1405,11 @@ export default function Home() {
       requestAnimationFrame(drawFrame);
 
       recorder.onstop = () => {
+        // Remove rendering preview video from the DOM
+        if (vid && vid.parentNode) {
+          vid.parentNode.removeChild(vid);
+        }
+
         const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -1393,6 +1420,19 @@ export default function Home() {
 
         setExportProgress(100);
         setExportTimeRemaining(0);
+        
+        // Alert user if fallback to webm occurred
+        if (extension === "webm" && exportFormat === "mp4") {
+          setTimeout(() => {
+            alert(
+              "Notice: Direct MP4 video container encoding is not supported in this browser.\n\n" +
+              "A high-quality WebM video file has been downloaded instead.\n" +
+              "• You can play this file in VLC, Chrome, Edge, Safari, or standard media players.\n" +
+              "• You can upload WebM files directly to YouTube, TikTok, Instagram, and Vercel!"
+            );
+          }, 600);
+        }
+
         setTimeout(() => {
           setIsExporting(false);
           setShowExportModal(false);
@@ -1409,6 +1449,10 @@ export default function Home() {
       setTimeout(drawFrame, 0);
 
     } catch (error) {
+      // Clean up video element from body on error
+      if (typeof vid !== "undefined" && vid && vid.parentNode) {
+        vid.parentNode.removeChild(vid);
+      }
       console.error("[Export Error]", error);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       setIsExporting(false);
