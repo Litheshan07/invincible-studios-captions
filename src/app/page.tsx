@@ -8,6 +8,7 @@ import {
   Scissors, Maximize, Minimize, Magnet
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 import EditorLayout from "./EditorLayout";
 import { useUndoHistory } from "./hooks/useUndoHistory";
 import { drawSubtitle } from "./utils/subtitleRenderer";
@@ -1218,7 +1219,7 @@ export default function Home() {
     let vid: HTMLVideoElement | null = null;
 
     try {
-      // â”€â”€ Step 1: Prepare canvas & hidden video element â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ── Step 1: Prepare canvas & hidden video element ──────────────────────
       const totalDuration = duration || segments[segments.length - 1].end_time;
       const targetFps = exportFps || 30;
 
@@ -1236,8 +1237,7 @@ export default function Home() {
       canvas.height = isPortrait ? Math.max(outW, outH) : outH;
       const ctx = canvas.getContext("2d")!;
 
-      // Hidden video for frame source — must be appended to the body and styled as visible
-      // to prevent the browser from throttling its decoding priority (which causes laggy canvas frames)
+      // Hidden video for frame source — must be appended to the body
       vid = document.createElement("video");
       vid.src = videoUrl;
       vid.muted = false;
@@ -1263,96 +1263,108 @@ export default function Home() {
       });
       exportVideoRef.current = vid;
 
-      // ── Step 2: Set up MediaRecorder ─────────────────────────────────────
+      // ── Step 2: Set up WebCodecs and mp4-muxer ───────────────────────────
       const bitrateMap: Record<string, number> = { "1m": 1_000_000, "5m": 5_000_000, "15m": 15_000_000 };
       const videoBitrate = bitrateMap[exportBitrate] || 5_000_000;
 
-      // Capture canvas stream + audio from the video element
-      const canvasStream = canvas.captureStream(targetFps);
-      let audioStream: MediaStream | null = null;
-      try {
-        // @ts-expect-error — captureStream is not in TS types but works in browsers
-        audioStream = vid!.captureStream();
-      } catch {
-        console.warn("[Export] Audio capture not supported — exporting video only");
-      }
-
-      const combinedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
-        ...(audioStream ? audioStream.getAudioTracks() : []),
-      ]);
-
-      let mimeType = "video/webm";
-      let extension = "webm";
-
-      if (exportFormat === "mp4") {
-        if (MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac")) {
-          mimeType = "video/mp4;codecs=h264,aac";
-          extension = "mp4";
-        } else if (MediaRecorder.isTypeSupported("video/mp4;codecs=h264")) {
-          mimeType = "video/mp4;codecs=h264";
-          extension = "mp4";
-        } else if (MediaRecorder.isTypeSupported("video/mp4")) {
-          mimeType = "video/mp4";
-          extension = "mp4";
-        } else {
-          // Native MP4 recording not supported, fall back to high-quality WebM container
-          mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-            ? "video/webm;codecs=vp9,opus"
-            : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-            ? "video/webm;codecs=vp8,opus"
-            : "video/webm";
-          extension = "webm"; 
-        }
-      } else if (exportFormat === "mov") {
-        if (MediaRecorder.isTypeSupported("video/quicktime;codecs=h264")) {
-          mimeType = "video/quicktime;codecs=h264";
-          extension = "mov";
-        } else if (MediaRecorder.isTypeSupported("video/quicktime")) {
-          mimeType = "video/quicktime";
-          extension = "mov";
-        } else {
-          mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-            ? "video/webm;codecs=vp9,opus"
-            : "video/webm";
-          extension = "webm";
-        }
-      } else {
-        mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-          ? "video/webm;codecs=vp9,opus"
-          : "video/webm";
-        extension = "webm";
-      }
-
-      const chunks: BlobPart[] = [];
-      const recorder = new MediaRecorder(combinedStream, {
-        mimeType,
-        videoBitsPerSecond: videoBitrate,
+      const muxer = new Muxer({
+        target: new ArrayBufferTarget(),
+        video: {
+          codec: "avc",
+          width: canvas.width,
+          height: canvas.height,
+        },
+        audio: {
+          codec: "aac",
+          sampleRate: 44100,
+          numberOfChannels: 2,
+        },
+        fastStart: "in-memory",
       });
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
 
-      recorder.start(100); // collect data every 100 ms
+      // ── Audio Processing ──────────────────────────────────────────────────
+      setExportProgress(5);
+      
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
+      const audioRes = await fetch(videoUrl);
+      const audioArrayBuffer = await audioRes.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(audioArrayBuffer);
 
-      // ── Step 3: Real-time Playback and Draw Loop ─────────────────────────
-      vid!.currentTime = 0;
-      await vid!.play();
+      const audioEncoder = new AudioEncoder({
+        output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+        error: (e) => console.error("AudioEncoder error", e),
+      });
+      audioEncoder.configure({
+        codec: "mp4a.40.2",
+        sampleRate: 44100,
+        numberOfChannels: audioBuffer.numberOfChannels,
+        bitrate: 128000,
+      });
 
-      const drawFrame = () => {
-        if (exportAbortRef.current || vid!.ended || vid!.currentTime >= totalDuration) {
-          vid!.pause();
-          if (recorder.state !== "inactive") {
-            recorder.stop();
-          }
-          return;
+      const numberOfFrames = audioBuffer.length;
+      const numberOfChannels = audioBuffer.numberOfChannels;
+      const chunkSize = 44100; // 1 second chunks
+
+      for (let i = 0; i < numberOfFrames; i += chunkSize) {
+        if (exportAbortRef.current) break;
+        const frames = Math.min(chunkSize, numberOfFrames - i);
+        const planarData = new Float32Array(frames * numberOfChannels);
+        for (let c = 0; c < numberOfChannels; c++) {
+          const channelData = audioBuffer.getChannelData(c);
+          planarData.set(channelData.subarray(i, i + frames), c * frames);
         }
+        
+        const audioData = new AudioData({
+          format: "f32-planar",
+          sampleRate: 44100,
+          numberOfFrames: frames,
+          numberOfChannels,
+          timestamp: (i / 44100) * 1_000_000,
+          data: planarData,
+        });
+        audioEncoder.encode(audioData);
+        audioData.close();
+      }
+      await audioEncoder.flush();
+      
+      if (exportAbortRef.current) throw new Error("Export cancelled");
 
-        const t = vid!.currentTime;
+      // ── Video Processing ──────────────────────────────────────────────────
+      const videoEncoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => console.error("VideoEncoder error", e),
+      });
+      videoEncoder.configure({
+        codec: "avc1.640028", // High profile H.264
+        width: canvas.width,
+        height: canvas.height,
+        bitrate: videoBitrate,
+        framerate: targetFps,
+      });
 
+      const frameDuration = 1 / targetFps;
+      const totalVideoFrames = Math.floor(totalDuration * targetFps);
+      
+      const startTime = performance.now();
+      
+      for (let f = 0; f < totalVideoFrames; f++) {
+        if (exportAbortRef.current) break;
+        const t = f * frameDuration;
+        
+        // Seek video accurately
+        vid.currentTime = t;
+        await new Promise<void>((resolve) => {
+          const onSeeked = () => { vid!.removeEventListener("seeked", onSeeked); resolve(); };
+          vid!.addEventListener("seeked", onSeeked);
+          // Fallback if seeked doesn't fire
+          setTimeout(() => { vid!.removeEventListener("seeked", onSeeked); resolve(); }, 150);
+        });
+        
         // Draw video frame to canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(vid!, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
 
-        // Find active segment
+        // Find active segment and draw text
         const activeSeg = segments.find(s => t >= s.start_time && t <= s.end_time);
         if (activeSeg) {
           const text = targetLang === "tanglish"
@@ -1394,62 +1406,57 @@ export default function Home() {
           });
         }
 
-        const progress = Math.min(98, Math.round((t / totalDuration) * 95) + 2);
-        setExportProgress(progress);
-        setExportTimeRemaining(Math.max(0, Math.round(totalDuration - t)));
-
-        requestAnimationFrame(drawFrame);
-      };
-
-      // Start the real-time recording loop
-      requestAnimationFrame(drawFrame);
-
-      recorder.onstop = () => {
-        // Remove rendering preview video from the DOM
-        if (vid && vid.parentNode) {
-          vid.parentNode.removeChild(vid);
-        }
-
-        const blob = new Blob(chunks, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `INVINCIBLE_STUDIOS_export.${extension}`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-
-        setExportProgress(100);
-        setExportTimeRemaining(0);
+        const videoFrame = new VideoFrame(canvas, { timestamp: t * 1_000_000 });
+        videoEncoder.encode(videoFrame, { keyFrame: f % (targetFps * 2) === 0 });
+        videoFrame.close();
         
-        // Alert user if fallback to webm occurred
-        if (extension === "webm" && exportFormat === "mp4") {
-          setTimeout(() => {
-            alert(
-              "Notice: Direct MP4 video container encoding is not supported in this browser.\n\n" +
-              "A high-quality WebM video file has been downloaded instead.\n" +
-              "• You can play this file in VLC, Chrome, Edge, Safari, or standard media players.\n" +
-              "• You can upload WebM files directly to YouTube, TikTok, Instagram, and Vercel!"
-            );
-          }, 600);
+        const progress = Math.min(99, Math.round((f / totalVideoFrames) * 90) + 10);
+        setExportProgress(progress);
+        
+        const elapsed = (performance.now() - startTime) / 1000;
+        const fps = (f + 1) / elapsed;
+        const remaining = (totalVideoFrames - (f + 1)) / fps;
+        setExportRenderFps(Math.round(fps));
+        setExportTimeRemaining(Math.max(0, Math.round(remaining)));
+      }
+      
+      if (exportAbortRef.current) {
+        throw new Error("Export cancelled");
+      }
+
+      await videoEncoder.flush();
+      
+      // ── Step 3: Finalize and Download ─────────────────────────────────────
+      muxer.finalize();
+      const buffer = muxer.target.buffer;
+      
+      if (vid && vid.parentNode) {
+        vid.parentNode.removeChild(vid);
+      }
+
+      const blob = new Blob([buffer], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `INVINCIBLE_STUDIOS_export.mp4`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+      setExportProgress(100);
+      setExportTimeRemaining(0);
+      
+      setTimeout(() => {
+        setIsExporting(false);
+        setShowExportModal(false);
+        setExportTimeRemaining(null);
+        setExportRenderFps(null);
+        if (!exportAbortRef.current) {
+          confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
         }
-
-        setTimeout(() => {
-          setIsExporting(false);
-          setShowExportModal(false);
-          setExportTimeRemaining(null);
-          setExportRenderFps(null);
-          if (!exportAbortRef.current) {
-            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-          }
-          exportAbortRef.current = false;
-        }, 500);
-      };
-
-      // Start the frame loop
-      setTimeout(drawFrame, 0);
+        exportAbortRef.current = false;
+      }, 500);
 
     } catch (error) {
-      // Clean up video element from body on error
       if (typeof vid !== "undefined" && vid && vid.parentNode) {
         vid.parentNode.removeChild(vid);
       }
@@ -1460,10 +1467,13 @@ export default function Home() {
       setExportTimeRemaining(null);
       setExportRenderFps(null);
       setShowExportModal(false);
+      
+      if (error instanceof Error && error.message === "Export cancelled") return;
+      
       alert(
         "Export Failed\n\n" +
         `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-        "Make sure your browser supports MediaRecorder (Chrome/Edge recommended)."
+        "Please try using Chrome or Edge for full WebCodecs support."
       );
     }
   };
