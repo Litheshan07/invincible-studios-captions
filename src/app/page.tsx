@@ -1240,7 +1240,7 @@ export default function Home() {
       // Hidden video for frame source — must be appended to the body
       vid = document.createElement("video");
       vid.src = videoUrl;
-      vid.muted = false;
+      vid.muted = true; // MUST be true so it doesn't play audio during export
       vid.preload = "auto";
       vid.crossOrigin = "anonymous";
       vid.style.position = "fixed";
@@ -1330,107 +1330,131 @@ export default function Home() {
       if (exportAbortRef.current) throw new Error("Export cancelled");
 
       // ── Video Processing ──────────────────────────────────────────────────
-      const videoEncoder = new VideoEncoder({
-        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-        error: (e) => console.error("VideoEncoder error", e),
-      });
-      videoEncoder.configure({
-        codec: "avc1.640028", // High profile H.264
+      const codecStr = canvas.width >= 3840 ? "avc1.640034" : "avc1.640028";
+      const videoConfig = {
+        codec: codecStr, // avc1.640034 supports 4K, avc1.640028 is 1080p limit
         width: canvas.width,
         height: canvas.height,
         bitrate: videoBitrate,
         framerate: targetFps,
-      });
+      };
 
-      const frameDuration = 1 / targetFps;
-      const totalVideoFrames = Math.floor(totalDuration * targetFps);
-      
+      const support = await VideoEncoder.isConfigSupported(videoConfig);
+      if (!support.supported) {
+        throw new Error(`Your device does not support hardware encoding for this resolution (${canvas.width}x${canvas.height}). Please select a lower quality like 1080p.`);
+      }
+
+      const videoEncoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => console.error("VideoEncoder error", e),
+      });
+      videoEncoder.configure(videoConfig);
+
+      vid.currentTime = 0;
+      vid.playbackRate = 0.5; // Play slower to give GPU/encoder plenty of time without dropping frames
+
+      let lastMediaTime = -1;
+      let frameCount = 0;
       const startTime = performance.now();
       
-      for (let f = 0; f < totalVideoFrames; f++) {
-        if (exportAbortRef.current) break;
-        const t = f * frameDuration;
-        
-        // Seek video accurately
-        vid.currentTime = t;
-        await new Promise<void>((resolve) => {
-          const onSeeked = () => { 
-            vid!.removeEventListener("seeked", onSeeked); 
-            // The 'seeked' event fires before the new frame's texture is fully uploaded to the GPU.
-            // Waiting two animation frames guarantees the canvas will draw the NEW frame, preventing severe lag/jitter.
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => resolve());
-            });
-          };
-          vid!.addEventListener("seeked", onSeeked);
-          // Fallback if seeked doesn't fire
-          setTimeout(() => { vid!.removeEventListener("seeked", onSeeked); resolve(); }, 150);
-        });
+      await new Promise<void>((resolveExport, rejectExport) => {
+        const processFrame = async (now: number, metadata: any) => {
+          try {
+            if (exportAbortRef.current) {
+              vid!.pause();
+              return rejectExport(new Error("Export cancelled"));
+            }
 
-        // Throttle to prevent overwhelming the WebCodecs encoder and dropping frames
-        while (videoEncoder.encodeQueueSize > 5) {
-          await new Promise(r => setTimeout(r, 10));
-        }
-        
-        // Draw video frame to canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+            // Dynamically throttle playback if the WebCodecs encoder queue gets backed up
+            if (videoEncoder.encodeQueueSize > 15 && !vid!.paused) {
+              vid!.pause();
+            } else if (videoEncoder.encodeQueueSize <= 5 && vid!.paused && vid!.currentTime < totalDuration) {
+              vid!.play().catch(() => {});
+            }
 
-        // Find active segment and draw text
-        const activeSeg = segments.find(s => t >= s.start_time && t <= s.end_time);
-        if (activeSeg) {
-          const text = targetLang === "tanglish"
-            ? (activeSeg.tanglish_text || activeSeg.text)
-            : targetLang === "english"
-            ? (activeSeg.english_text || activeSeg.text)
-            : (activeSeg.tamil_text || activeSeg.text);
+            // Only process NEW frames (requestVideoFrameCallback fires perfectly synchronized with source frames)
+            if (metadata.mediaTime !== lastMediaTime) {
+              lastMediaTime = metadata.mediaTime;
+              const t = metadata.mediaTime; // Perfect precise timestamp from the source video!
+              
+              // Draw video frame to canvas
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(vid!, 0, 0, canvas.width, canvas.height);
 
-          drawSubtitle(canvas, ctx, {
-            text,
-            words: activeSeg.words,
-            currentTime: t,
-            targetLang,
-            selectedFont,
-            selectedWeight,
-            fontSize,
-            fillType,
-            fillColor,
-            gradStart,
-            gradEnd,
-            strokeColor,
-            strokeWidth,
-            glowColor,
-            glowRadius,
-            glowOpacity,
-            shadowColor,
-            shadowBlur,
-            shadowOffsetX,
-            shadowOffsetY,
-            depth3d,
-            depthColor,
-            rotationX,
-            rotationY,
-            rotationZ,
-            subX,
-            subY,
-            positionTarget: "global",
-            exportDebug: false,
-          });
-        }
+              // Find active segment and draw text
+              const activeSeg = segments.find(s => t >= s.start_time && t <= s.end_time);
+              if (activeSeg) {
+                const text = targetLang === "tanglish"
+                  ? (activeSeg.tanglish_text || activeSeg.text)
+                  : targetLang === "english"
+                  ? (activeSeg.english_text || activeSeg.text)
+                  : (activeSeg.tamil_text || activeSeg.text);
 
-        const videoFrame = new VideoFrame(canvas, { timestamp: t * 1_000_000 });
-        videoEncoder.encode(videoFrame, { keyFrame: f % (targetFps * 2) === 0 });
-        videoFrame.close();
-        
-        const progress = Math.min(99, Math.round((f / totalVideoFrames) * 90) + 10);
-        setExportProgress(progress);
-        
-        const elapsed = (performance.now() - startTime) / 1000;
-        const fps = (f + 1) / elapsed;
-        const remaining = (totalVideoFrames - (f + 1)) / fps;
-        setExportRenderFps(Math.round(fps));
-        setExportTimeRemaining(Math.max(0, Math.round(remaining)));
-      }
+                drawSubtitle(canvas, ctx, {
+                  text,
+                  words: activeSeg.words,
+                  currentTime: t,
+                  targetLang,
+                  selectedFont,
+                  selectedWeight,
+                  fontSize,
+                  fillType,
+                  fillColor,
+                  gradStart,
+                  gradEnd,
+                  strokeColor,
+                  strokeWidth,
+                  glowColor,
+                  glowRadius,
+                  glowOpacity,
+                  shadowColor,
+                  shadowBlur,
+                  shadowOffsetX,
+                  shadowOffsetY,
+                  depth3d,
+                  depthColor,
+                  rotationX,
+                  rotationY,
+                  rotationZ,
+                  subX,
+                  subY,
+                  positionTarget: "global",
+                  exportDebug: false,
+                });
+              }
+
+              const videoFrame = new VideoFrame(canvas, { timestamp: t * 1_000_000 });
+              videoEncoder.encode(videoFrame, { keyFrame: frameCount % 60 === 0 });
+              videoFrame.close();
+              
+              frameCount++;
+
+              const progress = Math.min(99, Math.round((t / totalDuration) * 90) + 10);
+              setExportProgress(progress);
+              
+              const elapsed = (performance.now() - startTime) / 1000;
+              const fps = frameCount / elapsed;
+              const estRemainingFrames = (totalDuration - t) * (exportFps || 30); 
+              setExportRenderFps(Math.round(fps));
+              setExportTimeRemaining(Math.max(0, Math.round(estRemainingFrames / fps)));
+            }
+
+            if (vid!.currentTime >= totalDuration || vid!.ended) {
+              vid!.pause();
+              resolveExport();
+            } else {
+              (vid as any).requestVideoFrameCallback(processFrame);
+            }
+          } catch (err) {
+            vid!.pause();
+            rejectExport(err);
+          }
+        };
+
+        vid!.play().then(() => {
+          (vid as any).requestVideoFrameCallback(processFrame);
+        }).catch(rejectExport);
+      });
       
       if (exportAbortRef.current) {
         throw new Error("Export cancelled");
