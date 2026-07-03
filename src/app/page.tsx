@@ -1128,22 +1128,22 @@ export default function Home() {
 
       recorder.start(100); // collect data every 100 ms
 
-      // â”€â”€ Step 3: Seek-and-draw loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      const frameDuration = 1 / targetFps;
-      let t = 0;
-      const totalFrames = Math.ceil(totalDuration * targetFps);
-      let frameIdx = 0;
-
+      // ── Step 3: Real-time Playback and Draw Loop ─────────────────────────
       vid.currentTime = 0;
-      await new Promise<void>(r => { vid.onseeked = () => r(); vid.currentTime = 0; });
+      await vid.play();
 
-      const drawFrame = async () => {
-        if (exportAbortRef.current) {
-          recorder.stop();
+      const drawFrame = () => {
+        if (exportAbortRef.current || vid.ended || vid.currentTime >= totalDuration) {
+          vid.pause();
+          if (recorder.state !== "inactive") {
+            recorder.stop();
+          }
           return;
         }
 
-        // Draw video frame
+        const t = vid.currentTime;
+
+        // Draw video frame to canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
 
@@ -1189,26 +1189,15 @@ export default function Home() {
           });
         }
 
-        frameIdx++;
-        t = frameIdx * frameDuration;
-        const progress = Math.min(98, Math.round((frameIdx / totalFrames) * 95) + 2);
+        const progress = Math.min(98, Math.round((t / totalDuration) * 95) + 2);
         setExportProgress(progress);
-        setExportTimeRemaining(Math.round(((totalFrames - frameIdx) / targetFps)));
+        setExportTimeRemaining(Math.max(0, Math.round(totalDuration - t)));
 
-        if (t <= totalDuration + frameDuration) {
-          // Seek video to next frame time
-          vid.currentTime = Math.min(t, vid.duration);
-          await new Promise<void>(r => {
-            const onSeeked = () => { vid.removeEventListener("seeked", onSeeked); r(); };
-            vid.addEventListener("seeked", onSeeked);
-          });
-          // Use setTimeout to yield to browser and avoid blocking UI
-          setTimeout(drawFrame, 0);
-        } else {
-          // Done â€” stop recorder
-          recorder.stop();
-        }
+        requestAnimationFrame(drawFrame);
       };
+
+      // Start the real-time recording loop
+      requestAnimationFrame(drawFrame);
 
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: mimeType });
