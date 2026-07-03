@@ -15,26 +15,26 @@ import { drawSubtitle } from "./utils/subtitleRenderer";
 
 // Phonetic Tanglish mapping dictionary for mock translation agent
 const TANGlish_MAP: Record<string, string> = {
-  "வணக்கம்": "vanakkam",
-  "எப்படி இருக்கீங்க": "epdi irukeenga",
-  "நன்றி": "nandri",
-  "சாப்டீங்களா": "sapteengala",
-  "சூப்பர்": "super",
-  "நண்பா": "nanba",
-  "இல்லை": "illa",
-  "ஆமாம்": "ama",
-  "என்ன பண்றீங்க": "enna panreenga",
-  "செம்ம": "semma",
-  "இன்னைக்கு": "innaiku",
-  "நம்ம": "namma",
-  "ஒரு": "oru",
-  "வீடியோ": "video",
-  "பார்க்கப்போறோம்": "parkapoorom",
-  "எல்லாரும்": "ellarum",
-  "டாபிக்": "topic",
+  "à®µà®£à®•à¯à®•à®®à¯": "vanakkam",
+  "à®Žà®ªà¯à®ªà®Ÿà®¿ à®‡à®°à¯à®•à¯à®•à¯€à®™à¯à®•": "epdi irukeenga",
+  "à®¨à®©à¯à®±à®¿": "nandri",
+  "à®šà®¾à®ªà¯à®Ÿà¯€à®™à¯à®•à®³à®¾": "sapteengala",
+  "à®šà¯‚à®ªà¯à®ªà®°à¯": "super",
+  "à®¨à®£à¯à®ªà®¾": "nanba",
+  "à®‡à®²à¯à®²à¯ˆ": "illa",
+  "à®†à®®à®¾à®®à¯": "ama",
+  "à®Žà®©à¯à®© à®ªà®£à¯à®±à¯€à®™à¯à®•": "enna panreenga",
+  "à®šà¯†à®®à¯à®®": "semma",
+  "à®‡à®©à¯à®©à¯ˆà®•à¯à®•à¯": "innaiku",
+  "à®¨à®®à¯à®®": "namma",
+  "à®’à®°à¯": "oru",
+  "à®µà¯€à®Ÿà®¿à®¯à¯‹": "video",
+  "à®ªà®¾à®°à¯à®•à¯à®•à®ªà¯à®ªà¯‹à®±à¯‹à®®à¯": "parkapoorom",
+  "à®Žà®²à¯à®²à®¾à®°à¯à®®à¯": "ellarum",
+  "à®Ÿà®¾à®ªà®¿à®•à¯": "topic",
   "AI": "AI",
-  "கேப்ஷன்ஸ்": "captions",
-  "ஸ்பீடு": "speed"
+  "à®•à¯‡à®ªà¯à®·à®©à¯à®¸à¯": "captions",
+  "à®¸à¯à®ªà¯€à®Ÿà¯": "speed"
 };
 
 // Interfaces
@@ -103,7 +103,7 @@ export default function Home() {
   // Saved Progress projects database
   const [savedProjects, setSavedProjects] = useState<any[]>([]);
   
-  // Calls the Render backend DIRECTLY from the browser — skips Vercel serverless entirely
+  // Calls the Render backend DIRECTLY from the browser â€” skips Vercel serverless entirely
   // Set NEXT_PUBLIC_RENDER_URL=https://your-app.onrender.com in Vercel env vars
   const getApiHost = () => {
     if (typeof window !== "undefined") {
@@ -428,7 +428,7 @@ export default function Home() {
 
   // Apply visual style presets
   const applyPreset = (presetName: string) => {
-    // ── MINIMAL PRESETS ──
+    // â”€â”€ MINIMAL PRESETS â”€â”€
     if (presetName === "apple") {
       setSelectedFont("Inter");
       setSelectedWeight("Bold");
@@ -472,7 +472,7 @@ export default function Home() {
       setRotationZ(0);
       setAnimationPreset("none");
     }
-    // ── CINEMATIC PRESETS ──
+    // â”€â”€ CINEMATIC PRESETS â”€â”€
     else if (presetName === "movie") {
       setSelectedFont("Poppins");
       setSelectedWeight("Regular");
@@ -519,7 +519,7 @@ export default function Home() {
       setRotationZ(0);
       setAnimationPreset("fade");
     }
-    // ── GAMING PRESETS ──
+    // â”€â”€ GAMING PRESETS â”€â”€
     else if (presetName === "twitch") {
       setSelectedFont("Space Grotesk");
       setSelectedWeight("Bold");
@@ -571,7 +571,7 @@ export default function Home() {
       setRotationZ(0);
       setAnimationPreset("bounce");
     }
-    // ── VIRAL PRESETS ──
+    // â”€â”€ VIRAL PRESETS â”€â”€
     else if (presetName === "shorts") {
       setSelectedFont("Saira");
       setSelectedWeight("ExtraBoldItalic");
@@ -617,7 +617,7 @@ export default function Home() {
       setRotationZ(1);
       setAnimationPreset("karaoke-pop");
     }
-    // ── CREATIVE PRESETS ──
+    // â”€â”€ CREATIVE PRESETS â”€â”€
     else if (presetName === "anime") {
       setSelectedFont("Mukta Malar");
       setSelectedWeight("Bold");
@@ -998,15 +998,15 @@ export default function Home() {
       alert(
         "Transcription Failed\n\n" +
         "The audio could not be transcribed. Please check:\n" +
-        "• Your video has clear audio\n" +
-        "• The correct spoken language is selected\n" +
-        "• Your internet connection is stable\n\n" +
+        "â€¢ Your video has clear audio\n" +
+        "â€¢ The correct spoken language is selected\n" +
+        "â€¢ Your internet connection is stable\n\n" +
         `Error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   };
 
-  // ── Client-side Canvas+MediaRecorder Export ─────────────────────────────
+  // â”€â”€ Client-side Canvas+MediaRecorder Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // (exportVideoRef and exportAbortRef are declared in the refs block above)
 
   const runExport = async () => {
@@ -1027,7 +1027,7 @@ export default function Home() {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
     try {
-      // ── Step 1: Prepare canvas & hidden video element ────────────────────
+      // â”€â”€ Step 1: Prepare canvas & hidden video element â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const totalDuration = duration || segments[segments.length - 1].end_time;
       const targetFps = exportFps || 30;
 
@@ -1058,7 +1058,7 @@ export default function Home() {
       });
       exportVideoRef.current = vid;
 
-      // ── Step 2: Set up MediaRecorder ─────────────────────────────────────
+      // â”€â”€ Step 2: Set up MediaRecorder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const bitrateMap: Record<string, number> = { "1m": 1_000_000, "5m": 5_000_000, "15m": 15_000_000 };
       const videoBitrate = bitrateMap[exportBitrate] || 5_000_000;
 
@@ -1066,10 +1066,10 @@ export default function Home() {
       const canvasStream = canvas.captureStream(targetFps);
       let audioStream: MediaStream | null = null;
       try {
-        // @ts-expect-error — captureStream is not in TS types but works in browsers
+        // @ts-expect-error â€” captureStream is not in TS types but works in browsers
         audioStream = vid.captureStream();
       } catch {
-        console.warn("[Export] Audio capture not supported — exporting video only");
+        console.warn("[Export] Audio capture not supported â€” exporting video only");
       }
 
       const combinedStream = new MediaStream([
@@ -1092,7 +1092,7 @@ export default function Home() {
 
       recorder.start(100); // collect data every 100 ms
 
-      // ── Step 3: Seek-and-draw loop ────────────────────────────────────────
+      // â”€â”€ Step 3: Seek-and-draw loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const frameDuration = 1 / targetFps;
       let t = 0;
       const totalFrames = Math.ceil(totalDuration * targetFps);
@@ -1169,7 +1169,7 @@ export default function Home() {
           // Use setTimeout to yield to browser and avoid blocking UI
           setTimeout(drawFrame, 0);
         } else {
-          // Done — stop recorder
+          // Done â€” stop recorder
           recorder.stop();
         }
       };
@@ -1214,288 +1214,6 @@ export default function Home() {
         "Make sure your browser supports MediaRecorder (Chrome/Edge recommended)."
       );
     }
-  };
-
-  const cancelExport = () => {
-    exportAbortRef.current = true;
-    setIsExporting(false);
-    setExportProgress(0);
-    setExportTimeRemaining(null);
-    setExportRenderFps(null);
-    setShowExportModal(false);
-  };
-
-  // ── Legacy Export Validation Step (kept for reference, now unused) ──
-  const _legacyExportValidation = async () => {
-    try {
-      const canvas1 = document.createElement("canvas");
-      const canvas2 = document.createElement("canvas");
-      
-      const w = videoNaturalW || 1920;
-      const h = videoNaturalH || 1080;
-      canvas1.width = w;
-      canvas1.height = h;
-      canvas2.width = w;
-      canvas2.height = h;
-
-      const ctx1 = canvas1.getContext("2d");
-      const ctx2 = canvas2.getContext("2d");
-      
-      if (ctx1 && ctx2 && segments.length > 0) {
-        const activeSeg = segments.find(
-          seg => currentTime >= seg.start_time && currentTime <= seg.end_time
-        ) || segments[0];
-
-        const text = targetLang === "tanglish"
-          ? (activeSeg.tanglish_text || activeSeg.text)
-          : targetLang === "english"
-          ? (activeSeg.english_text || activeSeg.text)
-          : (activeSeg.tamil_text || activeSeg.text);
-
-        // Step 1: Render frame in preview mode
-        drawSubtitle(canvas1, ctx1, {
-          text,
-          words: activeSeg.words,
-          currentTime,
-          targetLang,
-          selectedFont,
-          selectedWeight,
-          fontSize,
-          fillType,
-          fillColor,
-          gradStart,
-          gradEnd,
-          strokeColor,
-          strokeWidth,
-          glowColor,
-          glowRadius,
-          glowOpacity,
-          shadowColor,
-          shadowBlur,
-          shadowOffsetX,
-          shadowOffsetY,
-          depth3d,
-          depthColor,
-          rotationX,
-          rotationY,
-          rotationZ,
-          subX,
-          subY,
-          positionTarget: "global",
-          exportDebug: false
-        });
-
-        // Step 2: Render same frame in export simulation mode
-        drawSubtitle(canvas2, ctx2, {
-          text,
-          words: activeSeg.words,
-          currentTime,
-          targetLang,
-          selectedFont,
-          selectedWeight,
-          fontSize,
-          fillType,
-          fillColor,
-          gradStart,
-          gradEnd,
-          strokeColor,
-          strokeWidth,
-          glowColor,
-          glowRadius,
-          glowOpacity,
-          shadowColor,
-          shadowBlur,
-          shadowOffsetX,
-          shadowOffsetY,
-          depth3d,
-          depthColor,
-          rotationX,
-          rotationY,
-          rotationZ,
-          subX,
-          subY,
-          positionTarget: "global",
-          exportDebug: false
-        });
-
-        // Step 3: Compare pixels
-        const imgData1 = ctx1.getImageData(0, 0, w, h).data;
-        const imgData2 = ctx2.getImageData(0, 0, w, h).data;
-        
-        let diffCount = 0;
-        const totalPixels = imgData1.length / 4;
-        for (let i = 0; i < imgData1.length; i += 4) {
-          const rDiff = Math.abs(imgData1[i] - imgData2[i]);
-          const gDiff = Math.abs(imgData1[i+1] - imgData2[i+1]);
-          const bDiff = Math.abs(imgData1[i+2] - imgData2[i+2]);
-          const aDiff = Math.abs(imgData1[i+3] - imgData2[i+3]);
-          if (rDiff > 5 || gDiff > 5 || bDiff > 5 || aDiff > 5) {
-            diffCount++;
-          }
-        }
-
-        const mismatchRatio = diffCount / totalPixels;
-        console.log(`[Validation] Preview vs Export Pixel Mismatch: ${(mismatchRatio * 100).toFixed(4)}%`);
-        
-        // Step 4: Raise error if mismatch > 1%
-        if (mismatchRatio > 0.01) {
-          alert(`ERROR: Preview and export renderers are inconsistent (mismatch: ${(mismatchRatio * 100).toFixed(2)}%).`);
-          return;
-        }
-      }
-    } catch (valErr) {
-      console.warn("Export validation skipped or failed:", valErr);
-    }
-
-    setIsExporting(true);
-    setExportProgress(10);
-    
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-    progressIntervalRef.current = setInterval(() => {
-      setExportProgress((prev) => {
-        if (prev >= 80) {
-          return 80;
-        }
-        return prev + 5;
-      });
-    }, 400);
-
-    try {
-      const response = await fetch(`${apiHost}/api/v1/projects/${projectId}/export`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          export_format: exportFormat,
-          bitrate: exportBitrate,
-          frame_rate: exportFps,
-          quality: exportQuality,
-          aspect_ratio: aspectRatio,
-          font_name: selectedFont,
-          font_weight: selectedWeight,
-          font_style: selectedWeight.includes("Italic") ? "italic" : "normal",
-          font_size: fontSize,
-          fill_type: fillType,
-          fill_color: fillColor,
-          grad_start: gradStart,
-          grad_end: gradEnd,
-          stroke_color: strokeColor,
-          stroke_width: strokeWidth,
-          glow_color: glowColor,
-          glow_radius: glowRadius,
-          glow_opacity: glowOpacity,
-          shadow_color: shadowColor,
-          shadow_blur: shadowBlur,
-          shadow_offset_x: shadowOffsetX,
-          shadow_offset_y: shadowOffsetY,
-          depth_3d: depth3d,
-          depth_color: depthColor,
-          rotation_x: rotationX,
-          rotation_y: rotationY,
-          rotation_z: rotationZ,
-          sub_x: subX,
-          sub_y: subY,
-          animation_preset: animationPreset,
-          export_debug: exportDebug,
-          target_lang: targetLang,
-          position_target: positionTarget,
-          segments: segments.map(s => ({
-            id: s.id,
-            start_time: s.start_time,
-            end_time: s.end_time,
-            text: targetLang === "tanglish"
-              ? (s.tanglish_text || s.text)
-              : targetLang === "english"
-              ? (s.english_text || s.text)
-              : (s.tamil_text || s.text),
-            words: s.words.map(w => ({
-              word: w.word,
-              start_time: w.start_time,
-              end_time: w.end_time,
-              confidence: w.confidence,
-              is_punchline: w.is_punchline || false
-            }))
-          }))
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Export failed");
-      }
-
-      const data = await response.json();
-      
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const statusRes = await fetch(`${apiHost}/api/v1/projects/${projectId}/export-status`);
-          if (statusRes.ok) {
-            const statusData = await statusRes.json();
-            if (typeof statusData.progress === "number") {
-              setExportProgress(statusData.progress);
-            }
-            if (typeof statusData.time_remaining_s === "number") {
-              setExportTimeRemaining(statusData.time_remaining_s);
-            }
-            if (typeof statusData.elapsed_s === "number") {
-              setExportElapsedS(statusData.elapsed_s);
-            }
-            if (typeof statusData.render_fps === "number") {
-              setExportRenderFps(statusData.render_fps);
-            }
-            if (statusData.status === "ready") {
-              clearInterval(pollIntervalRef.current);
-              clearInterval(progressIntervalRef.current);
-              setExportProgress(100);
-              setExportTimeRemaining(0);
-              
-              const downloadUrl = `${apiHost}/api/v1/projects/${projectId}/download?format=${exportFormat}`;
-              const link = document.createElement("a");
-              link.href = downloadUrl;
-              link.download = `INVINCIBLE_STUDIOS_export.${exportFormat}`;
-              link.click();
-              
-              setTimeout(() => {
-                setIsExporting(false);
-                setShowExportModal(false);
-                setExportTimeRemaining(null);
-                setExportRenderFps(null);
-                confetti({
-                  particleCount: 150,
-                  spread: 80,
-                  origin: { y: 0.6 }
-                });
-              }, 500);
-            } else if (statusData.status === "failed") {
-              clearInterval(pollIntervalRef.current);
-              clearInterval(progressIntervalRef.current);
-              setIsExporting(false);
-              setExportTimeRemaining(null);
-              alert(`Export rendering failed: ${statusData.error}`);
-            }
-          }
-        } catch (e) {
-          console.warn("Error polling export status:", e);
-        }
-      }, 1000);
-
-    } catch (error) {
-      console.warn("Export failed", error);
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-      setIsExporting(false);
-      setExportProgress(0);
-      setExportTimeRemaining(null);
-      setExportRenderFps(null);
-      setShowExportModal(false);
-      
-      alert(
-        "Export Failed\n\n" +
-        "Your project session may have expired due to a server restart. " +
-        "Please go back to the home page and re-upload your video to start a new editing session."
-      );
-    }
-
   };
 
 
@@ -1828,7 +1546,7 @@ export default function Home() {
               </h1>
               
               <p className="mt-6 text-lg sm:text-xl text-slate-400 text-center max-w-2xl font-light">
-                INVINCIBLE STUDIOS Captions turns raw footage into scroll-stopping subtitles — transcribed, translated, and styled to the beat by studio ultimate, in one liquid-glass editor.
+                INVINCIBLE STUDIOS Captions turns raw footage into scroll-stopping subtitles â€” transcribed, translated, and styled to the beat by studio ultimate, in one liquid-glass editor.
               </p>
 
               <div className="mt-12 w-full max-w-xl p-8 rounded-3xl liquid-glass-premium border-white/10 text-center relative metallic-border">
@@ -1992,7 +1710,7 @@ export default function Home() {
                   </div>
                   <div className="flex items-center space-x-3 bg-black/40 px-5 py-3.5 rounded-xl border border-white/5 text-sm">
                     <span className="text-slate-400 font-mono">Formal:</span>
-                    <span className="text-slate-300 font-medium">எப்படி இருக்கிறீர்கள்</span>
+                    <span className="text-slate-300 font-medium">à®Žà®ªà¯à®ªà®Ÿà®¿ à®‡à®°à¯à®•à¯à®•à®¿à®±à¯€à®°à¯à®•à®³à¯</span>
                     <span className="text-slate-500 font-mono">&rarr;</span>
                     <span className="text-orange-400 font-extrabold font-mono">epdi irukeenga</span>
                   </div>
@@ -2192,7 +1910,7 @@ export default function Home() {
                                 <input
                                   type="password"
                                   required
-                                  placeholder="••••••••"
+                                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                                   value={password}
                                   onChange={(e) => setPassword(e.target.value)}
                                   className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none"
@@ -2203,7 +1921,7 @@ export default function Home() {
                                 <input
                                   type="password"
                                   required
-                                  placeholder="••••••••"
+                                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                                   value={confirmPassword}
                                   onChange={(e) => setConfirmPassword(e.target.value)}
                                   className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none"
@@ -2255,7 +1973,7 @@ export default function Home() {
                         
                         {sandboxCodeDisplay && (
                           <div className="p-3.5 rounded-xl border border-orange-500/20 bg-orange-500/5 text-center text-xs text-orange-400 font-semibold leading-relaxed">
-                            ⚠️ Sandbox Mode: Since email/SMS services are not configured, your OTP code is: <strong className="text-white text-sm bg-white/10 px-2 py-0.5 rounded font-mono ml-1">{sandboxCodeDisplay}</strong>
+                            âš ï¸ Sandbox Mode: Since email/SMS services are not configured, your OTP code is: <strong className="text-white text-sm bg-white/10 px-2 py-0.5 rounded font-mono ml-1">{sandboxCodeDisplay}</strong>
                           </div>
                         )}
                         
@@ -2457,29 +2175,29 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 mb-2 block">🎙️ Spoken Language in Video</label>
+                  <label className="text-xs font-semibold text-slate-300 mb-2 block">ðŸŽ™ï¸ Spoken Language in Video</label>
                   <select
                     value={spokenLanguage}
                     onChange={(e) => setSpokenLanguage(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500/50 mb-3"
                   >
                     <option value="auto">Auto Detect (Recommended)</option>
-                    <option value="ta">Tamil (தமிழ்)</option>
+                    <option value="ta">Tamil (à®¤à®®à®¿à®´à¯)</option>
                     <option value="en">English</option>
-                    <option value="hi">Hindi (हिन्दी)</option>
-                    <option value="te">Telugu (తెలుగు)</option>
-                    <option value="kn">Kannada (ಕನ್ನಡ)</option>
-                    <option value="ml">Malayalam (മലയാളം)</option>
+                    <option value="hi">Hindi (à¤¹à¤¿à¤¨à¥à¤¦à¥€)</option>
+                    <option value="te">Telugu (à°¤à±†à°²à±à°—à±)</option>
+                    <option value="kn">Kannada (à²•à²¨à³à²¨à²¡)</option>
+                    <option value="ml">Malayalam (à´®à´²à´¯à´¾à´³à´‚)</option>
                   </select>
-                  <label className="text-xs font-semibold text-slate-300 mb-2 block">📝 Caption Output Format</label>
+                  <label className="text-xs font-semibold text-slate-300 mb-2 block">ðŸ“ Caption Output Format</label>
                   <select
                     value={targetLang}
                     onChange={(e) => setTargetLang(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-rose-500/50"
                   >
-                    <option value="tanglish">Tamil → Tanglish (Contextual Transliteration)</option>
-                    <option value="english">Tamil → English Translation</option>
-                    <option value="tamil">Formal Tamil (தமிழ்)</option>
+                    <option value="tanglish">Tamil â†’ Tanglish (Contextual Transliteration)</option>
+                    <option value="english">Tamil â†’ English Translation</option>
+                    <option value="tamil">Formal Tamil (à®¤à®®à®¿à®´à¯)</option>
                     <option value="multilingual">Multilingual Source Classification</option>
                   </select>
                 </div>
