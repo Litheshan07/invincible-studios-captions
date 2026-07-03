@@ -107,9 +107,9 @@ export default function Home() {
   // Set NEXT_PUBLIC_RENDER_URL=https://your-app.onrender.com in Vercel env vars
   const getApiHost = () => {
     if (typeof window !== "undefined") {
-      return process.env.NEXT_PUBLIC_RENDER_URL || "";
+      return process.env.NEXT_PUBLIC_RENDER_URL || process.env.NEXT_PUBLIC_API_URL || "";
     }
-    return process.env.NEXT_PUBLIC_RENDER_URL || "http://localhost:8000";
+    return process.env.NEXT_PUBLIC_RENDER_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   };
   const apiHost = getApiHost();
 
